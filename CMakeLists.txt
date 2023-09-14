@@ -37,8 +37,8 @@ endif()
 
 option(BUILD_ASSET_WHEEL "Builds wheels for pypi" OFF)      ### CI Build for generic wheels
 option(BUILD_SPHINX_DOCS "Builds sphinx docs" OFF)      
-option(LINK_TIME_OPT "Compile with LTO" ON)          ### DO LTO - Recommended for full release
-set(CLANG_MAX_INLINE_DEPTH 400)
+option(LINK_TIME_OPT "Compile with LTO" OFF)          ### DO LTO - Recommended for full release
+set(CLANG_MAX_INLINE_DEPTH 225)
 
 
 

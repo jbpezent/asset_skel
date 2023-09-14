@@ -15,21 +15,7 @@
 #include <type_traits>
 #include <typeinfo>
 #include <vector>
-
-#include "TypeDefs/EigenTypes.h"
-#include "Utils/EigenSTL.h"
-#include "Utils/GetCoreCount.h"
-#include "Utils/LambdaJumpTable.h"
-#include "Utils/MathFunctions.h"
-#include "Utils/STDExtensions.h"
-#include "Utils/ThreadPool.h"
-#include "Utils/Timer.h"
-#include "Utils/TupleIterator.h"
-#include "Utils/TypeErasure.h"
-#include "Utils/TypeName.h"
-#include "Utils/fmtlib.h"
-
-
+#include "fmtlib.h"
 ////////////////////////////////////
 #include <pybind11/eigen.h>
 #include <pybind11/functional.h>

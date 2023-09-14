@@ -1,12 +1,12 @@
 
 set(CMAKE_VERBOSE_MAKEFILE TRUE)
 
-add_custom_target(pypiwheel  ALL DEPENDS ${CMAKE_SOURCE_DIR}/asset_asrl)
-add_dependencies(pypiwheel asset)
+add_custom_target(pypiwheel  ALL DEPENDS ${CMAKE_SOURCE_DIR}/asset_skel)
+add_dependencies(pypiwheel _asset_skel)
 
-set(WHEEL_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/asset_asrl)
+set(WHEEL_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/asset_skel)
 
-set(ASSET_BINARY_NAME "asset${PYTHON_MODULE_EXTENSION}")
+set(ASSET_BINARY_NAME "_asset_skel${PYTHON_MODULE_EXTENSION}")
 
 
 configure_file(
@@ -21,9 +21,9 @@ add_custom_command(TARGET pypiwheel
 
 
 add_custom_command(TARGET pypiwheel 
-                    COMMAND ${CMAKE_COMMAND} -E copy_directory  ${CMAKE_SOURCE_DIR}/asset_asrl
-                                                ${WHEEL_BUILD_DIR}/asset_asrl
-                    DEPENDS ${CMAKE_SOURCE_DIR}/asset_asrl
+                    COMMAND ${CMAKE_COMMAND} -E copy_directory  ${CMAKE_SOURCE_DIR}/asset_skel
+                                                ${WHEEL_BUILD_DIR}/asset_skel
+                    DEPENDS ${CMAKE_SOURCE_DIR}/asset_skel
                     COMMENT "Copied asset_asrl to ${WHEEL_BUILD_DIR}")
 
 add_custom_command(TARGET pypiwheel 
@@ -33,7 +33,7 @@ add_custom_command(TARGET pypiwheel
 
 
 add_custom_command(TARGET pypiwheel 
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:asset> ${WHEEL_BUILD_DIR}/
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:_asset_skel> ${WHEEL_BUILD_DIR}/
     COMMENT "Copied asset.pyd to ${WHEEL_BUILD_DIR}"
     )
 

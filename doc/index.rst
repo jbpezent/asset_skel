@@ -15,9 +15,7 @@ A newly developed high-performance interior-point optimizer (PSIOPT) is included
     :maxdepth: 2
     :caption: Contents:
 
-    tutorials/tutorials.rst
-    examples/examples.rst
-    python/python.rst
+    
 
 Citation
 ########

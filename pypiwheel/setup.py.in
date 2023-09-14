@@ -39,7 +39,7 @@ pyversion = '>=3.7'
 def main():
 
     setup(
-        name = 'asset_asrl',
+        name = 'asset_skel',
         version = '@PROJECT_VERSION@',
         description = "High-speed, extensible, object-oriented trajectory design and optimization",
         long_description="High-speed, extensible, object-oriented trajectory design and optimization",
@@ -48,11 +48,11 @@ def main():
         license = 'Apache 2.0',
         url ='https://github.com/AlabamaASRL/asset_asrl',
         data_files=[
-          ('asset_asrl',['asset_asrl/asset-apache2.txt','asset_asrl/eigen-mpl2.txt','asset_asrl/fmt-mit.txt','asset_asrl/issl.pdf','asset_asrl/pybind11-bsd.txt']),
+          ('_asset_skel',[]),
         ],
         ext_modules=[
             Precompiled(
-                "asset",
+                "_asset_skel",
                 precompiled="@ASSET_BINARY_NAME@"
             ),
         ],

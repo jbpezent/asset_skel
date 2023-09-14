@@ -92,7 +92,7 @@ setup(
     author="Alabama ASRL",
     description="High-speed, extensible, object-oriented trajectory design and optimization",
     long_description="",
-    ext_modules=[CMakeExtension("asset")],
+    ext_modules=[CMakeExtension("_asset_skel")],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
 )
