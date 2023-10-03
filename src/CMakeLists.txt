@@ -19,7 +19,6 @@ target_compile_options(pch PUBLIC ${COMPILE_FLAGS})
 
 #---------------------------------------------------------------------------------
 ## Static Library
-
 add_library(staticlib 
 STATIC 
 staticlib.h staticlib.cpp

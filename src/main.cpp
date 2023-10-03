@@ -17,7 +17,7 @@ int main() {
   signal(SIGINT, signal_callback);
 
 
-  fmt::print("Pardiso Works?:{0:}\n", test_pardiso());
+  fmt::print("Pardiso Works?:{0:}\n", test_sparselib());
 
   return 0;
 }

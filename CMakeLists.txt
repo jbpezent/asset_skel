@@ -137,15 +137,13 @@ endif()
 if(NOT WIN32)
   list(APPEND RELEASE_FLAGS "-fomit-frame-pointer")
   list(APPEND RELEASE_FLAGS "-fno-stack-protector")
-  list(APPEND RELEASE_FLAGS "-fno-stack-clash-protection")
+  #list(APPEND RELEASE_FLAGS "-fno-stack-clash-protection")
   list(APPEND RELEASE_FLAGS "-fcf-protection=none")
   list(APPEND RELEASE_FLAGS "-fno-asynchronous-unwind-tables")
   list(APPEND RELEASE_FLAGS "-ffast-math")
 endif()
  
 if(APPLE)
-  list(APPEND COMMON_FLAGS "-Xlinker -undefined")
-  list(APPEND COMMON_FLAGS "-Xlinker dynamic_lookup")
 endif()
 
 
@@ -186,9 +184,10 @@ add_definitions(-DFMT_HEADER_ONLY)
 ###################### Find and set our dependencies ###########################
 ################################################################################
 
-if(APPLE)
-  include(FindPythonEnv)
-endif()
+#if(APPLE)
+#  include(FindPythonEnv)
+#endif()
+
 # Set up submodule dependencies
 include_directories(dep/eigen)
 include_directories(dep/fmt/include)
@@ -208,32 +207,24 @@ if(UNIX AND NOT APPLE)
     list(APPEND COMPILE_FLAGS "-fopenmp")
   endif()
 elseif(APPLE)
-  if(FALSE)
-    include_directories("/usr/local/opt/llvm/include")
-    link_directories("/usr/local/opt/llvm/lib")
-    set(CMAKE_LIBRARY_PATH /usr/local/opt/llvm/lib ${CMAKE_LIBRARY_PATH})
-    set(CMAKE_LIBRARY_PATH $ENV{MKLROOT}/lib ${CMAKE_LIBRARY_PATH})
-    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-      set(OpenMP_C "${CMAKE_C_COMPILER}")
-      set(OpenMP_C_FLAGS "-fopenmp=libomp")
-      set(OpenMP_C_LIB_NAMES "libomp")
-      set(OpenMP_libomp_LIBRARY "omp")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
+      include_directories("/opt/homebrew/opt/libomp/include")
+      link_directories("/opt/homebrew/opt/libomp/lib")
+      list(APPEND COMPILE_FLAGS "-Xclang")
+      list(APPEND COMPILE_FLAGS "-fopenmp")
+      list(APPEND OpenMP_CXX_FLAGS "-lomp")
+    else()
+      list(APPEND COMPILE_FLAGS "-fopenmp")
     endif()
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-      set(OpenMP_CXX "${CMAKE_CXX_COMPILER}")
-      set(OpenMP_CXX_FLAGS "-fopenmp=libomp")
-      set(OpenMP_CXX_LIB_NAMES "libomp")
-      set(OpenMP_libomp_LIBRARY "omp")
-      find_package(OpenMP REQUIRED)
-      list(APPEND COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
-    endif()
-
-    
   endif()
-  
 endif()
 
-find_package(MKL REQUIRED)
+if(APPLE)
+  find_package(Accelerate REQUIRED)
+else()
+  find_package(MKL REQUIRED)
+endif()
 
 find_package(Python ${PYVERSION_EXACT} REQUIRED COMPONENTS Interpreter Development)
 
@@ -244,8 +235,6 @@ if(UNIX)
   list(APPEND LINK_LIBS m)
 endif()
 
-
-
 ################################################################################
 ################ Linker Flags ##################################################
 if(BUILD_SHARED_LIBS AND NOT APPLE AND NOT WIN32)  # Windows and Linux Dynamic Linking
@@ -253,8 +242,12 @@ if(BUILD_SHARED_LIBS AND NOT APPLE AND NOT WIN32)  # Windows and Linux Dynamic L
 elseif(UNIX AND NOT APPLE)  # Linux Static Linking
   list(APPEND LINKER_FLAGS "${OpenMP_CXX_FLAGS} -Wl,--no-undefined -Wl,--start-group ${MKL_LIBRARIES_LIST} -Wl,--end-group")
 elseif(APPLE)  # Apple Dynamic and Static Linking
-
-  list(APPEND LINKER_FLAGS "${OpenMP_CXX_FLAGS} -Xlinker -undefined -Xlinker dynamic_lookup")
+  list(APPEND LINKER_FLAGS "${OpenMP_CXX_FLAGS} -Wl,-undefined,error")
+  #if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
+  #  list(APPEND LINKER_FLAGS "${OpenMP_CXX_FLAGS} -Wl")
+  #else()
+  #  list(APPEND LINKER_FLAGS "${OpenMP_CXX_FLAGS} -Wl,--no-undefined -Wl")
+  #endif()
 else()  # Windows Static Linking
   list(APPEND LINKER_FLAGS "${OpenMP_CXX_FLAGS}")
 endif()
