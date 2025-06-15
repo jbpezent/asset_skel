@@ -47,7 +47,11 @@ target_link_libraries(_asset_skel PUBLIC staticlib)
 target_include_directories(_asset_skel PRIVATE ${INCLUDE_DIRS})
 target_link_libraries(_asset_skel PRIVATE ${LINK_LIBS})
 
-if(UNIX)
+if(APPLE)
+    set_property(TARGET _asset_skel APPEND PROPERTY
+        LINK_FLAGS "-flat_namespace -undefined suppress"
+    )
+elseif(UNIX)
     set_target_properties(_asset_skel PROPERTIES LINK_FLAGS ${LINKER_FLAGS})
 endif()
 

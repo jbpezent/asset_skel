@@ -12,4 +12,4 @@ numsegs: number of defect constraint segments
 
 returns upper triangular row major sparse matrix
 */
-Eigen::SparseMatrix<double, Eigen::RowMajor> collocation_kkt_matrix(int nx, int nu, int cardstates, int numsegs);
+Eigen::SparseMatrix<double, EIGEN_STORAGE_ORDER> collocation_kkt_matrix(int nx, int nu, int cardstates, int numsegs);

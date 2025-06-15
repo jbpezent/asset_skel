@@ -50,11 +50,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-
-
 # Release Flags
 list(APPEND RELEASE_FLAGS "-O2")
-
 
 ## Generic Binary Flags
 if(BUILD_ASSET_WHEEL)
@@ -137,22 +134,19 @@ endif()
 if(NOT WIN32)
   list(APPEND RELEASE_FLAGS "-fomit-frame-pointer")
   list(APPEND RELEASE_FLAGS "-fno-stack-protector")
-  #list(APPEND RELEASE_FLAGS "-fno-stack-clash-protection")
   list(APPEND RELEASE_FLAGS "-fcf-protection=none")
   list(APPEND RELEASE_FLAGS "-fno-asynchronous-unwind-tables")
   list(APPEND RELEASE_FLAGS "-ffast-math")
+  if (NOT APPLE) 
+    list(APPEND RELEASE_FLAGS "-fno-stack-clash-protection")
+  endif()
 endif()
  
-if(APPLE)
-endif()
-
-
 
 # Combine Flags
 set(COMPILE_FLAGS PUBLIC ${COMMON_FLAGS})
 list(APPEND COMPILE_FLAGS "$<$<OR:$<CONFIG:RELEASE>,$<CONFIG:RELWITHDEBINFO>>:${RELEASE_FLAGS}>")
 list(APPEND COMPILE_FLAGS "$<$<OR:$<CONFIG:DEBUG>,$<CONFIG:RELWITHDEBINFO>>:${DEBUG_FLAGS}>")
-
 
 
 ################################################################################
@@ -192,9 +186,11 @@ add_definitions(-DFMT_HEADER_ONLY)
 include_directories(dep/eigen)
 include_directories(dep/fmt/include)
 
-add_subdirectory(dep)
+find_package(Python ${PYVERSION_EXACT} COMPONENTS Interpreter Development REQUIRED)
 
 set(PYBIND11_CPP_STANDARD -std=c++17)
+set(PYBIND11_FINDPYTHON ON)
+add_subdirectory(dep)
 
 # Set up external dependencies
 find_package(Threads REQUIRED)
@@ -221,16 +217,35 @@ elseif(APPLE)
 endif()
 
 if(APPLE)
-  find_package(Accelerate REQUIRED)
+  find_package(AccelerateSparse REQUIRED)
+  add_compile_definitions(
+    USE_ACCELERATE_SPARSE
+    EIGEN_STORAGE_ORDER=Eigen::ColMajor
+  )
 else()
   find_package(MKL REQUIRED)
+  add_compile_definitions(EIGEN_STORAGE_ORDER=Eigen::RowMajor)
 endif()
 
-find_package(Python ${PYVERSION_EXACT} REQUIRED COMPONENTS Interpreter Development)
-
 # Set dependency variables
-set(INCLUDE_DIRS ${PYBIND11_INCLUDE_DIR} ${PYTHON_INCLUDE_DIRS} ${MKL_INCLUDE_DIRS})
-set(LINK_LIBS ${PYTHON_LIBRARIES} ${MKL_LIBRARIES} Threads::Threads ${CMAKE_DL_LIBS})
+set(INCLUDE_DIRS ${PYBIND11_INCLUDE_DIR} ${MKL_INCLUDE_DIRS} ${AccelerateSparse_INCLUDE_DIRS})
+set(LINK_LIBS ${MKL_LIBRARIES} Threads::Threads ${CMAKE_DL_LIBS} ${AccelerateSparse_LIBRARIES})
+
+# Handle Python executable variable 
+if (NOT DEFINED PYTHON_EXECUTABLE)
+    set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
+endif()
+if(DEFINED Python_INCLUDE_DIRS)
+    list(APPEND INCLUDE_DIRS ${Python_INCLUDE_DIRS})    
+elseif(DEFINED PYTHON_INCLUDE_DIRS)
+    list(APPEND INCLUDE_DIRS ${PYTHON_INCLUDE_DIRS})
+endif()
+if(DEFINED Python_LIBRARIES)
+    list(APPEND LINK_LIBS ${Python_LIBRARIES})
+elseif(DEFINED PYTHON_LIBRARIES)
+    list(APPEND LINK_LIBS ${PYTHON_LIBRARIES})
+endif()
+
 if(UNIX)
   list(APPEND LINK_LIBS m)
 endif()
@@ -242,19 +257,13 @@ if(BUILD_SHARED_LIBS AND NOT APPLE AND NOT WIN32)  # Windows and Linux Dynamic L
 elseif(UNIX AND NOT APPLE)  # Linux Static Linking
   list(APPEND LINKER_FLAGS "${OpenMP_CXX_FLAGS} -Wl,--no-undefined -Wl,--start-group ${MKL_LIBRARIES_LIST} -Wl,--end-group")
 elseif(APPLE)  # Apple Dynamic and Static Linking
-  list(APPEND LINKER_FLAGS "${OpenMP_CXX_FLAGS} -Wl,-undefined,error")
-  #if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
-  #  list(APPEND LINKER_FLAGS "${OpenMP_CXX_FLAGS} -Wl")
-  #else()
-  #  list(APPEND LINKER_FLAGS "${OpenMP_CXX_FLAGS} -Wl,--no-undefined -Wl")
-  #endif()
+  list(APPEND LINKER_FLAGS "${OpenMP_CXX_FLAGS} -Wl,-undefined,dynamic_lookup")
 else()  # Windows Static Linking
   list(APPEND LINKER_FLAGS "${OpenMP_CXX_FLAGS}")
 endif()
 
 ###########################################################
 ######## Find Correct Python Install Location  ############
-
 
 if(NOT PIP_INSTALL)
   if(WIN32)

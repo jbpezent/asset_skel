@@ -1,9 +1,9 @@
 #include "TestMatrices.h"
 
-Eigen::SparseMatrix<double, Eigen::RowMajor> collocation_kkt_matrix(int nx, int nu, int cardstates, int numsegs)
+Eigen::SparseMatrix<double, EIGEN_STORAGE_ORDER> collocation_kkt_matrix(int nx, int nu, int cardstates, int numsegs)
 {
 
-	Eigen::SparseMatrix<double, Eigen::RowMajor> m;
+	Eigen::SparseMatrix<double, EIGEN_STORAGE_ORDER> m;
 
 	int numstates = (cardstates - 1) * numsegs + 1;
 	int numVars = (nx + nu + 1) * numstates;

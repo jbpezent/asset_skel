@@ -1,11 +1,12 @@
-#pragma once
-
 #ifndef EIGEN_ACCELERATESUPPORT_H
 #define EIGEN_ACCELERATESUPPORT_H
 
+#include <Eigen/src/Core/util/DisableStupidWarnings.h>
 #include <Accelerate/Accelerate.h>
 
 #include <Eigen/Sparse>
+
+#include <cmath>
 
 namespace Eigen {
 
@@ -13,98 +14,99 @@ template <typename MatrixType_, int UpLo_, SparseFactorization_t Solver_, bool E
 class AccelerateImpl;
 
 /** \ingroup AccelerateSupport_Module
-  * \class AccelerateLLT
-  * \brief A direct Cholesky (LLT) factorization and solver based on Accelerate
-  *
-  * \warning Only single and double precision real scalar types are supported by Accelerate
-  * 
-  * \tparam MatrixType_ the type of the sparse matrix A, it must be a SparseMatrix<>
-  * \tparam UpLo_ additional information about the matrix structure. Default is Lower.
-  *
-  * \sa \ref TutorialSparseSolverConcept, class AccelerateLLT
-  */
+ * \typedef AccelerateLLT
+ * \brief A direct Cholesky (LLT) factorization and solver based on Accelerate
+ *
+ * \warning Only single and double precision real scalar types are supported by Accelerate
+ *
+ * \tparam MatrixType_ the type of the sparse matrix A, it must be a SparseMatrix<>
+ * \tparam UpLo_ additional information about the matrix structure. Default is Lower.
+ *
+ * \sa \ref TutorialSparseSolverConcept, class AccelerateLLT
+ */
 template <typename MatrixType, int UpLo = Lower>
 using AccelerateLLT = AccelerateImpl<MatrixType, UpLo | Symmetric, SparseFactorizationCholesky, true>;
 
 /** \ingroup AccelerateSupport_Module
-  * \class AccelerateLDLT
-  * \brief The default Cholesky (LDLT) factorization and solver based on Accelerate
-  *
-  * \warning Only single and double precision real scalar types are supported by Accelerate
-  * 
-  * \tparam MatrixType_ the type of the sparse matrix A, it must be a SparseMatrix<>
-  * \tparam UpLo_ additional information about the matrix structure. Default is Lower.
-  *
-  * \sa \ref TutorialSparseSolverConcept, class AccelerateLDLT
-  */
+ * \typedef AccelerateLDLT
+ * \brief The default Cholesky (LDLT) factorization and solver based on Accelerate
+ *
+ * \warning Only single and double precision real scalar types are supported by Accelerate
+ *
+ * \tparam MatrixType_ the type of the sparse matrix A, it must be a SparseMatrix<>
+ * \tparam UpLo_ additional information about the matrix structure. Default is Lower.
+ *
+ * \sa \ref TutorialSparseSolverConcept, class AccelerateLDLT
+ */
 template <typename MatrixType, int UpLo = Lower>
 using AccelerateLDLT = AccelerateImpl<MatrixType, UpLo | Symmetric, SparseFactorizationLDLT, true>;
 
 /** \ingroup AccelerateSupport_Module
-  * \class AccelerateLDLTUnpivoted
-  * \brief A direct Cholesky-like LDL^T factorization and solver based on Accelerate with only 1x1 pivots and no pivoting
-  *
-  * \warning Only single and double precision real scalar types are supported by Accelerate
-  * 
-  * \tparam MatrixType_ the type of the sparse matrix A, it must be a SparseMatrix<>
-  * \tparam UpLo_ additional information about the matrix structure. Default is Lower.
-  *
-  * \sa \ref TutorialSparseSolverConcept, class AccelerateLDLTUnpivoted
-  */
+ * \typedef AccelerateLDLTUnpivoted
+ * \brief A direct Cholesky-like LDL^T factorization and solver based on Accelerate with only 1x1 pivots and no pivoting
+ *
+ * \warning Only single and double precision real scalar types are supported by Accelerate
+ *
+ * \tparam MatrixType_ the type of the sparse matrix A, it must be a SparseMatrix<>
+ * \tparam UpLo_ additional information about the matrix structure. Default is Lower.
+ *
+ * \sa \ref TutorialSparseSolverConcept, class AccelerateLDLTUnpivoted
+ */
 template <typename MatrixType, int UpLo = Lower>
 using AccelerateLDLTUnpivoted = AccelerateImpl<MatrixType, UpLo | Symmetric, SparseFactorizationLDLTUnpivoted, true>;
 
 /** \ingroup AccelerateSupport_Module
-  * \class AccelerateLDLTSBK
-  * \brief A direct Cholesky (LDLT) factorization and solver based on Accelerate with Supernode Bunch-Kaufman and static pivoting
-  *
-  * \warning Only single and double precision real scalar types are supported by Accelerate
-  * 
-  * \tparam MatrixType_ the type of the sparse matrix A, it must be a SparseMatrix<>
-  * \tparam UpLo_ additional information about the matrix structure. Default is Lower.
-  *
-  * \sa \ref TutorialSparseSolverConcept, class AccelerateLDLTSBK
-  */
+ * \typedef AccelerateLDLTSBK
+ * \brief A direct Cholesky (LDLT) factorization and solver based on Accelerate with Supernode Bunch-Kaufman and static
+ * pivoting
+ *
+ * \warning Only single and double precision real scalar types are supported by Accelerate
+ *
+ * \tparam MatrixType_ the type of the sparse matrix A, it must be a SparseMatrix<>
+ * \tparam UpLo_ additional information about the matrix structure. Default is Lower.
+ *
+ * \sa \ref TutorialSparseSolverConcept, class AccelerateLDLTSBK
+ */
 template <typename MatrixType, int UpLo = Lower>
 using AccelerateLDLTSBK = AccelerateImpl<MatrixType, UpLo | Symmetric, SparseFactorizationLDLTSBK, true>;
 
 /** \ingroup AccelerateSupport_Module
-  * \class AccelerateLDLTTPP
-  * \brief A direct Cholesky (LDLT) factorization and solver based on Accelerate with full threshold partial pivoting
-  *
-  * \warning Only single and double precision real scalar types are supported by Accelerate
-  * 
-  * \tparam MatrixType_ the type of the sparse matrix A, it must be a SparseMatrix<>
-  * \tparam UpLo_ additional information about the matrix structure. Default is Lower.
-  *
-  * \sa \ref TutorialSparseSolverConcept, class AccelerateLDLTTPP
-  */
+ * \typedef AccelerateLDLTTPP
+ * \brief A direct Cholesky (LDLT) factorization and solver based on Accelerate with full threshold partial pivoting
+ *
+ * \warning Only single and double precision real scalar types are supported by Accelerate
+ *
+ * \tparam MatrixType_ the type of the sparse matrix A, it must be a SparseMatrix<>
+ * \tparam UpLo_ additional information about the matrix structure. Default is Lower.
+ *
+ * \sa \ref TutorialSparseSolverConcept, class AccelerateLDLTTPP
+ */
 template <typename MatrixType, int UpLo = Lower>
 using AccelerateLDLTTPP = AccelerateImpl<MatrixType, UpLo | Symmetric, SparseFactorizationLDLTTPP, true>;
 
 /** \ingroup AccelerateSupport_Module
-  * \class AccelerateQR
-  * \brief A QR factorization and solver based on Accelerate
-  *
-  * \warning Only single and double precision real scalar types are supported by Accelerate
-  * 
-  * \tparam MatrixType_ the type of the sparse matrix A, it must be a SparseMatrix<>
-  *
-  * \sa \ref TutorialSparseSolverConcept, class AccelerateQR
-  */
+ * \typedef AccelerateQR
+ * \brief A QR factorization and solver based on Accelerate
+ *
+ * \warning Only single and double precision real scalar types are supported by Accelerate
+ *
+ * \tparam MatrixType_ the type of the sparse matrix A, it must be a SparseMatrix<>
+ *
+ * \sa \ref TutorialSparseSolverConcept, class AccelerateQR
+ */
 template <typename MatrixType>
 using AccelerateQR = AccelerateImpl<MatrixType, 0, SparseFactorizationQR, false>;
 
 /** \ingroup AccelerateSupport_Module
-  * \class AccelerateCholeskyAtA
-  * \brief A QR factorization and solver based on Accelerate without storing Q (equivalent to A^TA = R^T R)
-  *
-  * \warning Only single and double precision real scalar types are supported by Accelerate
-  * 
-  * \tparam MatrixType_ the type of the sparse matrix A, it must be a SparseMatrix<>
-  *
-  * \sa \ref TutorialSparseSolverConcept, class AccelerateCholeskyAtA
-  */
+ * \typedef AccelerateCholeskyAtA
+ * \brief A QR factorization and solver based on Accelerate without storing Q (equivalent to A^TA = R^T R)
+ *
+ * \warning Only single and double precision real scalar types are supported by Accelerate
+ *
+ * \tparam MatrixType_ the type of the sparse matrix A, it must be a SparseMatrix<>
+ *
+ * \sa \ref TutorialSparseSolverConcept, class AccelerateCholeskyAtA
+ */
 template <typename MatrixType>
 using AccelerateCholeskyAtA = AccelerateImpl<MatrixType, 0, SparseFactorizationCholeskyAtA, false>;
 
@@ -144,6 +146,28 @@ template <>
 struct SparseTypesTrait<float>
     : SparseTypesTraitBase<DenseVector_Float, DenseMatrix_Float, SparseMatrix_Float, SparseOpaqueFactorization_Float> {
 };
+
+// Taken from https://github.com/ceres-solver/ceres-solver/blob/master/internal/ceres/accelerate_sparse.cc
+void* resizeForAccelerateAlignment(const size_t required_size, 
+                                         std::vector<uint8_t>* mem_vec) 
+{
+  // As per the Accelerate documentation, all workspace memory passed to the
+  // sparse solver functions must be 16-byte aligned.
+  constexpr int kAccelerateRequiredAlignment = 16; 
+  // Although malloc() on macOS should always be 16-byte aligned, it is unclear
+  // if this holds for new(), or on other Apple OSs (phoneOS, watchOS etc).
+  // As such we assume it is not and use std::align() to create a (potentially
+  // offset) 16-byte aligned sub-buffer of the specified size within workspace.
+  mem_vec->resize(required_size + kAccelerateRequiredAlignment);
+  size_t size_from_aligned_start = mem_vec->size();
+  void* aligned_solve_workspace_start =
+      reinterpret_cast<void*>(mem_vec->data());
+  aligned_solve_workspace_start = std::align(kAccelerateRequiredAlignment,
+                                             required_size,
+                                             aligned_solve_workspace_start,
+                                             size_from_aligned_start);
+  return aligned_solve_workspace_start;
+}
 
 }  // end namespace internal
 
@@ -203,6 +227,9 @@ class AccelerateImpl : public SparseSolverBase<AccelerateImpl<MatrixType_, UpLo_
     }
 
     m_order = SparseOrderDefault;
+    //m_order = SparseOrderMetis;
+    m_doIterativeRefinement = false;
+    m_iterativeRefinementIterations = 2;
   }
 
   explicit AccelerateImpl(const MatrixType& matrix) : AccelerateImpl() { compute(matrix); }
@@ -229,14 +256,23 @@ class AccelerateImpl : public SparseSolverBase<AccelerateImpl<MatrixType_, UpLo_
   /** Sets the ordering algorithm to use. */
   void setOrder(SparseOrder_t order) { m_order = order; }
 
+  void setIterativeRefinement(bool iterativeRefinement) { 
+    m_doIterativeRefinement = iterativeRefinement; 
+  }
+
+  void setIterativeRefinementIterations(int iterations) {
+    eigen_assert(iterations >= 0 && "Number of iterations must be non-negative.");
+    m_iterativeRefinementIterations = iterations;
+  }
+
  private:
   template <typename T>
-  void buildAccelSparseMatrix(const SparseMatrix<T>& a, AccelSparseMatrix& A, std::vector<long>& columnStarts) {
+  void buildAccelSparseMatrix(const SparseMatrix<T>& a) {
     const Index nColumnsStarts = a.cols() + 1;
 
-    columnStarts.resize(nColumnsStarts);
+    m_columnStarts.resize(nColumnsStarts);
 
-    for (Index i = 0; i < nColumnsStarts; i++) columnStarts[i] = a.outerIndexPtr()[i];
+    for (Index i = 0; i < nColumnsStarts; i++) m_columnStarts[i] = a.outerIndexPtr()[i];
 
     SparseAttributes_t attributes{};
     attributes.transpose = false;
@@ -248,26 +284,26 @@ class AccelerateImpl : public SparseSolverBase<AccelerateImpl<MatrixType_, UpLo_
     structure.rowCount = static_cast<int>(a.rows());
     structure.columnCount = static_cast<int>(a.cols());
     structure.blockSize = 1;
-    structure.columnStarts = columnStarts.data();
+    structure.columnStarts = m_columnStarts.data();
     structure.rowIndices = const_cast<int*>(a.innerIndexPtr());
 
-    A.structure = structure;
-    A.data = const_cast<T*>(a.valuePtr());
+    m_matrix.structure = structure;
+    m_matrix.data = const_cast<T*>(a.valuePtr());
   }
 
-  void doAnalysis(AccelSparseMatrix& A) {
+  void doAnalysis() {
     m_numericFactorization.reset(nullptr);
 
-    SparseSymbolicFactorOptions opts{};
-    opts.control = SparseDefaultControl;
-    opts.orderMethod = m_order;
-    opts.order = nullptr;
-    opts.ignoreRowsAndColumns = nullptr;
-    opts.malloc = malloc;
-    opts.free = free;
-    opts.reportError = nullptr;
+    SparseSymbolicFactorOptions fopts{};
+    fopts.control = SparseDefaultControl;
+    fopts.orderMethod = m_order;
+    fopts.order = nullptr;
+    fopts.ignoreRowsAndColumns = nullptr;
+    fopts.malloc = malloc;
+    fopts.free = free;
+    fopts.reportError = nullptr;
 
-    m_symbolicFactorization.reset(new SymbolicFactorization(SparseFactor(Solver_, A.structure, opts)));
+    m_symbolicFactorization.reset(new SymbolicFactorization(SparseFactor(Solver_, m_matrix.structure, fopts)));
 
     SparseStatus_t status = m_symbolicFactorization->status;
 
@@ -276,11 +312,33 @@ class AccelerateImpl : public SparseSolverBase<AccelerateImpl<MatrixType_, UpLo_
     if (status != SparseStatusOK) m_symbolicFactorization.reset(nullptr);
   }
 
-  void doFactorization(AccelSparseMatrix& A) {
+  void doFactorization() {
     SparseStatus_t status = SparseStatusReleased;
 
     if (m_symbolicFactorization) {
-      m_numericFactorization.reset(new NumericFactorization(SparseFactor(*m_symbolicFactorization, A)));
+
+      SparseNumericFactorOptions nopts{};
+      nopts.control = SparseDefaultControl;
+      nopts.scalingMethod = SparseScalingDefault;
+      nopts.scaling = nullptr;
+      // Default values set by Apple
+      nopts.pivotTolerance = 0.01;                   // Recommended value for difficult matrices in double
+      nopts.zeroTolerance = 1e-4 * __DBL_EPSILON__;  // "A few" orders of magnitude below epsilon.
+
+      // Get factor and workspace size
+      const int factorSize = 
+        std::is_same<Scalar, double>::value 
+            ? m_symbolicFactorization->factorSize_Double 
+            : m_symbolicFactorization->factorSize_Float;
+      const int workspaceSize =
+        std::is_same<Scalar, double>::value 
+            ? m_symbolicFactorization->workspaceSize_Double 
+            : m_symbolicFactorization->workspaceSize_Float;
+
+      m_numericFactorization.reset(new NumericFactorization(SparseFactor(
+        *m_symbolicFactorization, m_matrix, nopts, 
+        internal::resizeForAccelerateAlignment(factorSize, &m_factorStorage), 
+        internal::resizeForAccelerateAlignment(workspaceSize, &m_workspace))));
 
       status = m_numericFactorization->status;
 
@@ -309,13 +367,19 @@ class AccelerateImpl : public SparseSolverBase<AccelerateImpl<MatrixType_, UpLo_
     }
   }
 
+  std::vector<long> m_columnStarts;
+  mutable AccelSparseMatrix m_matrix;
   mutable ComputationInfo m_info;
+  mutable std::vector<uint8_t> m_factorStorage;
+  mutable std::vector<uint8_t> m_workspace;
   Index m_nRows, m_nCols;
   std::unique_ptr<SymbolicFactorization, SymbolicFactorizationDeleter> m_symbolicFactorization;
   std::unique_ptr<NumericFactorization, NumericFactorizationDeleter> m_numericFactorization;
   SparseKind_t m_sparseKind;
   SparseTriangle_t m_triType;
   SparseOrder_t m_order;
+  bool m_doIterativeRefinement;
+  int m_iterativeRefinementIterations;
 };
 
 /** Computes the symbolic and numeric decomposition of matrix \a a */
@@ -326,14 +390,11 @@ void AccelerateImpl<MatrixType_, UpLo_, Solver_, EnforceSquare_>::compute(const 
   m_nRows = a.rows();
   m_nCols = a.cols();
 
-  AccelSparseMatrix A{};
-  std::vector<long> columnStarts;
+  buildAccelSparseMatrix(a);
 
-  buildAccelSparseMatrix(a, A, columnStarts);
+  doAnalysis();
 
-  doAnalysis(A);
-
-  if (m_symbolicFactorization) doFactorization(A);
+  if (m_symbolicFactorization) doFactorization();
 
   m_isInitialized = true;
 }
@@ -351,19 +412,18 @@ void AccelerateImpl<MatrixType_, UpLo_, Solver_, EnforceSquare_>::analyzePattern
   m_nRows = a.rows();
   m_nCols = a.cols();
 
-  AccelSparseMatrix A{};
   std::vector<long> columnStarts;
+  buildAccelSparseMatrix(a, columnStarts);
 
-  buildAccelSparseMatrix(a, A, columnStarts);
-
-  doAnalysis(A);
+  doAnalysis();
 
   m_isInitialized = true;
 }
 
 /** Performs a numeric decomposition of matrix \a a.
  *
- * The given matrix must have the same sparsity pattern as the matrix on which the symbolic decomposition has been performed.
+ * The given matrix must have the same sparsity pattern as the matrix on which the symbolic decomposition has been
+ * performed.
  *
  * \sa analyzePattern()
  */
@@ -374,12 +434,11 @@ void AccelerateImpl<MatrixType_, UpLo_, Solver_, EnforceSquare_>::factorize(cons
 
   if (EnforceSquare_) eigen_assert(a.rows() == a.cols());
 
-  AccelSparseMatrix A{};
   std::vector<long> columnStarts;
 
-  buildAccelSparseMatrix(a, A, columnStarts);
+  buildAccelSparseMatrix(a, columnStarts);
 
-  doFactorization(A);
+  doFactorization();
 }
 
 template <typename MatrixType_, int UpLo_, SparseFactorization_t Solver_, bool EnforceSquare_>
@@ -413,11 +472,52 @@ void AccelerateImpl<MatrixType_, UpLo_, Solver_, EnforceSquare_>::_solve_impl(co
   bmat.columnStride = bmat.rowCount;
   bmat.data = b_ptr;
 
-  SparseSolve(*m_numericFactorization, bmat, xmat);
+  const int nrhs = (bmat.attributes.transpose) ? bmat.rowCount : bmat.columnCount;
+  const int workspaceSize = m_numericFactorization->solveWorkspaceRequiredStatic + 
+    nrhs*m_numericFactorization->solveWorkspaceRequiredPerRHS;
+
+  void* ws = internal::resizeForAccelerateAlignment(workspaceSize, &m_workspace);
+  assert(ws != nullptr && "Accelerate workspace alignment failed");
+
+  SparseSolve(*m_numericFactorization, bmat, xmat, ws);
 
   updateInfoStatus(status);
+
+  if (m_doIterativeRefinement)
+  {
+    auto n = vDSP_Length(x.rows() * x.cols());
+    auto r_mem = std::vector<Scalar>(x.rows() * x.cols(), Scalar(0));
+
+    AccelDenseMatrix ref_mat{};
+    ref_mat.attributes = SparseAttributes_t();
+    ref_mat.columnCount = static_cast<int>(x.cols());
+    ref_mat.rowCount = static_cast<int>(x.rows());
+    ref_mat.columnStride = ref_mat.rowCount;
+    ref_mat.data = r_mem.data();
+
+    for (int i = 0; i < m_iterativeRefinementIterations; ++i) {
+        // Calculate residual and store in ref_mat
+        vDSP_vnegD(
+            bmat.data, 1,
+            ref_mat.data, 1, n
+        );
+        SparseMultiplyAdd(m_matrix, xmat, ref_mat);
+
+        // Solve for correction and store in ref_mat
+        SparseSolve(*m_numericFactorization, ref_mat, ws);
+
+        // vDSP operation that calculates x -= correction
+        vDSP_vsubD(
+            ref_mat.data, 1,
+            xmat.data, 1,
+            xmat.data, 1,
+            n
+        );
+    }
+  }
 }
 
 }  // end namespace Eigen
 
 #endif  // EIGEN_ACCELERATESUPPORT_H
+
