@@ -220,7 +220,7 @@ if(APPLE)
   find_package(AccelerateSparse REQUIRED)
   add_compile_definitions(
     USE_ACCELERATE_SPARSE
-    EIGEN_STORAGE_ORDER=Eigen::ColMajor
+    EIGEN_STORAGE_ORDER=Eigen::RowMajor
   )
 else()
   find_package(MKL REQUIRED)

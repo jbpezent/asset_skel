@@ -1,12 +1,15 @@
 #ifndef EIGEN_ACCELERATESUPPORT_H
 #define EIGEN_ACCELERATESUPPORT_H
 
+#include "AccelerateUtils.h"
+
 #include <Eigen/src/Core/util/DisableStupidWarnings.h>
 #include <Accelerate/Accelerate.h>
 
 #include <Eigen/Sparse>
 
 #include <cmath>
+#include <numeric>
 
 namespace Eigen {
 
@@ -226,8 +229,7 @@ class AccelerateImpl : public SparseSolverBase<AccelerateImpl<MatrixType_, UpLo_
       m_triType = (UpLo_ & Lower) ? SparseLowerTriangle : SparseUpperTriangle;
     }
 
-    m_order = SparseOrderDefault;
-    //m_order = SparseOrderMetis;
+    m_order = SparseOrderMetis;  // Use METIS ordering by default for better performance
     m_doIterativeRefinement = false;
     m_iterativeRefinementIterations = 2;
   }
@@ -244,6 +246,8 @@ class AccelerateImpl : public SparseSolverBase<AccelerateImpl<MatrixType_, UpLo_
     return m_info;
   }
 
+  void setMatrix(const MatrixType& matrix);
+
   void analyzePattern(const MatrixType& matrix);
 
   void factorize(const MatrixType& matrix);
@@ -256,6 +260,9 @@ class AccelerateImpl : public SparseSolverBase<AccelerateImpl<MatrixType_, UpLo_
   /** Sets the ordering algorithm to use. */
   void setOrder(SparseOrder_t order) { m_order = order; }
 
+  /** Sets the number of threads for accelerate */
+  void setNumThreads(int num_threads);
+
   void setIterativeRefinement(bool iterativeRefinement) { 
     m_doIterativeRefinement = iterativeRefinement; 
   }
@@ -265,51 +272,156 @@ class AccelerateImpl : public SparseSolverBase<AccelerateImpl<MatrixType_, UpLo_
     m_iterativeRefinementIterations = iterations;
   }
 
+  MatrixType& getMatrix() { return m_matrix; }
+
+  void getMatrix(const MatrixType& matrix) {
+    m_matrix = matrix;
+    m_matrix.makeCompressed();
+  }
+
+  template <int U = UpLo>
+  typename std::enable_if<bool(U & Symmetric), MatrixType>::type 
+  getMatrixTwisted(const MatrixType& matrix) {
+    eigen_assert(!m_permutation.empty() && "Permutation not available. Call compute() or analyzePattern() first.");
+    eigen_assert(matrix.rows() == matrix.cols() && "Matrix must be square for twisted operation.");
+    eigen_assert(static_cast<size_t>(matrix.rows()) == m_permutation.size() && "Matrix size must match permutation size.");
+    
+    // Create permutation matrix from the stored permutation vector
+    PermutationMatrix<Dynamic, Dynamic, StorageIndex> p_perm;
+    p_perm.indices() = Map<const Matrix<StorageIndex, Dynamic, 1>>(m_permutation.data(), m_permutation.size());
+    
+    MatrixType result;
+    result.resize(matrix.rows(), matrix.cols());
+    
+    constexpr int TriangleType = (U & Lower) ? Lower : Upper;
+    result.template selfadjointView<TriangleType>() = 
+        matrix.template selfadjointView<TriangleType>().twistedBy(p_perm);
+    
+    result.makeCompressed();
+    return result;
+  }
+
+  template <SparseFactorization_t S = Solver_>
+  typename std::enable_if<S == SparseFactorizationLDLTTPP, Index>::type 
+  numPositiveEigenvalues() const {
+    eigen_assert(m_numericFactorization && "Numerical factorization must be computed first.");
+    
+    int num_positive = 0, num_zero = 0, num_negative = 0;
+    int status = SparseGetInertia(*m_numericFactorization, &num_positive, &num_zero, &num_negative);
+    
+    if (status != 0) {
+      // If SparseGetInertia fails, return -1 to indicate error
+      return -1;
+    }
+    
+    return static_cast<Index>(num_positive);
+  }
+
+  template <SparseFactorization_t S = Solver_>
+  typename std::enable_if<S == SparseFactorizationLDLTTPP, Index>::type 
+  numNegativeEigenvalues() const {
+    eigen_assert(m_numericFactorization && "Numerical factorization must be computed first.");
+    
+    int num_positive = 0, num_zero = 0, num_negative = 0;
+    int status = SparseGetInertia(*m_numericFactorization, &num_positive, &num_zero, &num_negative);
+    
+    if (status != 0) {
+      // If SparseGetInertia fails, return -1 to indicate error
+      return -1;
+    }
+    
+    return static_cast<Index>(num_negative);
+  }
+
+  template <SparseFactorization_t S = Solver_>
+  typename std::enable_if<S == SparseFactorizationLDLTTPP, Index>::type 
+  numZeroEigenvalues() const {
+    eigen_assert(m_numericFactorization && "Numerical factorization must be computed first.");
+    
+    int num_positive = 0, num_zero = 0, num_negative = 0;
+    int status = SparseGetInertia(*m_numericFactorization, &num_positive, &num_zero, &num_negative);
+    
+    if (status != 0) {
+      // If SparseGetInertia fails, return -1 to indicate error
+      return -1;
+    }
+    
+    return static_cast<Index>(num_zero);
+  }
+
  private:
-  template <typename T>
-  void buildAccelSparseMatrix(const SparseMatrix<T>& a) {
-    const Index nColumnsStarts = a.cols() + 1;
-
-    m_columnStarts.resize(nColumnsStarts);
-
-    for (Index i = 0; i < nColumnsStarts; i++) m_columnStarts[i] = a.outerIndexPtr()[i];
-
+  void buildAccelSparseMatrix() {
     SparseAttributes_t attributes{};
-    attributes.transpose = false;
-    attributes.triangle = m_triType;
     attributes.kind = m_sparseKind;
 
     SparseMatrixStructure structure{};
-    structure.attributes = attributes;
-    structure.rowCount = static_cast<int>(a.rows());
-    structure.columnCount = static_cast<int>(a.cols());
     structure.blockSize = 1;
-    structure.columnStarts = m_columnStarts.data();
-    structure.rowIndices = const_cast<int*>(a.innerIndexPtr());
 
-    m_matrix.structure = structure;
-    m_matrix.data = const_cast<T*>(a.valuePtr());
+    if ((MatrixType::Flags & Eigen::ColMajor)) { // CSC format
+      const Index nColumnsStarts = m_matrix.cols() + 1;
+      m_columnStarts.resize(nColumnsStarts);
+      std::copy_n(m_matrix.outerIndexPtr(), nColumnsStarts, m_columnStarts.data());
+
+      structure.rowCount = static_cast<int>(m_matrix.rows());
+      structure.columnCount = static_cast<int>(m_matrix.cols());
+      structure.columnStarts = m_columnStarts.data();
+      structure.rowIndices = const_cast<int*>(m_matrix.innerIndexPtr());
+      attributes.transpose = false;
+      attributes.triangle = m_triType;
+    } else { // RowMajor (CSR) format
+      // For CSR, Accelerate expects CSC. We use the 'transpose' attribute
+      // to tell Accelerate to interpret the CSR matrix as a transposed CSC matrix.
+      const Index nRowStarts = m_matrix.rows() + 1;
+      m_columnStarts.resize(nRowStarts); // Reuse m_columnStarts for rowStarts
+      std::copy_n(m_matrix.outerIndexPtr(), nRowStarts, m_columnStarts.data());
+
+      structure.rowCount = static_cast<int>(m_matrix.cols()); // Swapped
+      structure.columnCount = static_cast<int>(m_matrix.rows()); // Swapped
+      structure.columnStarts = m_columnStarts.data(); // These are now rowStarts
+      structure.rowIndices = const_cast<int*>(m_matrix.innerIndexPtr()); // These are now columnIndices
+      attributes.transpose = true;
+      
+      // When transposing, we need to flip the triangle type for symmetric matrices
+      if (m_sparseKind == SparseSymmetric) {
+        attributes.triangle = (m_triType == SparseLowerTriangle) ? SparseUpperTriangle : SparseLowerTriangle;
+      } else {
+        attributes.triangle = m_triType;
+      }
+    }
+
+    structure.attributes = attributes;
+    m_accel_matrix.structure = structure;
+    m_accel_matrix.data = const_cast<Scalar*>(m_matrix.valuePtr());
   }
 
   void doAnalysis() {
     m_numericFactorization.reset(nullptr);
 
+    // Only resize permutation if necessary to avoid unnecessary allocations
+    if (m_permutation.size() != static_cast<size_t>(m_nRows)) {
+      m_permutation.resize(m_nRows);
+    }
+    std::iota(m_permutation.begin(), m_permutation.end(), 0);  // Initialize with identity
+
     SparseSymbolicFactorOptions fopts{};
     fopts.control = SparseDefaultControl;
     fopts.orderMethod = m_order;
-    fopts.order = nullptr;
+    fopts.order = m_permutation.data();  // Provide storage for computed permutation
     fopts.ignoreRowsAndColumns = nullptr;
     fopts.malloc = malloc;
     fopts.free = free;
     fopts.reportError = nullptr;
 
-    m_symbolicFactorization.reset(new SymbolicFactorization(SparseFactor(Solver_, m_matrix.structure, fopts)));
+    m_symbolicFactorization.reset(new SymbolicFactorization(SparseFactor(Solver_, m_accel_matrix.structure, fopts)));
 
     SparseStatus_t status = m_symbolicFactorization->status;
 
     updateInfoStatus(status);
 
-    if (status != SparseStatusOK) m_symbolicFactorization.reset(nullptr);
+    if (status != SparseStatusOK) {
+      m_symbolicFactorization.reset(nullptr);
+      // Don't clear permutation on failure - keep the storage for potential reuse
+    }
   }
 
   void doFactorization() {
@@ -336,7 +448,7 @@ class AccelerateImpl : public SparseSolverBase<AccelerateImpl<MatrixType_, UpLo_
             : m_symbolicFactorization->workspaceSize_Float;
 
       m_numericFactorization.reset(new NumericFactorization(SparseFactor(
-        *m_symbolicFactorization, m_matrix, nopts, 
+        *m_symbolicFactorization, m_accel_matrix, nopts, 
         internal::resizeForAccelerateAlignment(factorSize, &m_factorStorage), 
         internal::resizeForAccelerateAlignment(workspaceSize, &m_workspace))));
 
@@ -368,10 +480,14 @@ class AccelerateImpl : public SparseSolverBase<AccelerateImpl<MatrixType_, UpLo_
   }
 
   std::vector<long> m_columnStarts;
-  mutable AccelSparseMatrix m_matrix;
+  mutable MatrixType m_matrix;
+  mutable AccelSparseMatrix m_accel_matrix;
   mutable ComputationInfo m_info;
   mutable std::vector<uint8_t> m_factorStorage;
   mutable std::vector<uint8_t> m_workspace;
+  mutable std::vector<uint8_t> m_solve_workspace;  // Cache solve workspace
+  mutable std::vector<Scalar> m_r_mem;
+  mutable int m_cached_solve_workspace_size = 0;   // Track cached size
   Index m_nRows, m_nCols;
   std::unique_ptr<SymbolicFactorization, SymbolicFactorizationDeleter> m_symbolicFactorization;
   std::unique_ptr<NumericFactorization, NumericFactorizationDeleter> m_numericFactorization;
@@ -380,17 +496,30 @@ class AccelerateImpl : public SparseSolverBase<AccelerateImpl<MatrixType_, UpLo_
   SparseOrder_t m_order;
   bool m_doIterativeRefinement;
   int m_iterativeRefinementIterations;
+  mutable std::vector<StorageIndex> m_permutation;  // Store permutation from factorization
 };
+
+template <typename MatrixType_, int UpLo_, SparseFactorization_t Solver_, bool EnforceSquare_>
+void AccelerateImpl<MatrixType_, UpLo_, Solver_, EnforceSquare_>::setMatrix(const MatrixType& matrix) {
+  if (EnforceSquare_) eigen_assert(matrix.rows() == matrix.cols());
+
+  m_matrix = matrix;
+  m_nRows = m_matrix.rows();
+  m_nCols = m_matrix.cols();
+
+  buildAccelSparseMatrix();
+
+  m_isInitialized = false;
+  m_symbolicFactorization.reset(nullptr);
+  m_numericFactorization.reset(nullptr);
+  m_cached_solve_workspace_size = 0;  // Clear cached workspace size
+  m_info = Success;
+}
 
 /** Computes the symbolic and numeric decomposition of matrix \a a */
 template <typename MatrixType_, int UpLo_, SparseFactorization_t Solver_, bool EnforceSquare_>
 void AccelerateImpl<MatrixType_, UpLo_, Solver_, EnforceSquare_>::compute(const MatrixType& a) {
-  if (EnforceSquare_) eigen_assert(a.rows() == a.cols());
-
-  m_nRows = a.rows();
-  m_nCols = a.cols();
-
-  buildAccelSparseMatrix(a);
+  setMatrix(a);
 
   doAnalysis();
 
@@ -408,12 +537,7 @@ void AccelerateImpl<MatrixType_, UpLo_, Solver_, EnforceSquare_>::compute(const 
 template <typename MatrixType_, int UpLo_, SparseFactorization_t Solver_, bool EnforceSquare_>
 void AccelerateImpl<MatrixType_, UpLo_, Solver_, EnforceSquare_>::analyzePattern(const MatrixType& a) {
   if (EnforceSquare_) eigen_assert(a.rows() == a.cols());
-
-  m_nRows = a.rows();
-  m_nCols = a.cols();
-
-  std::vector<long> columnStarts;
-  buildAccelSparseMatrix(a, columnStarts);
+  setMatrix(a);
 
   doAnalysis();
 
@@ -434,9 +558,9 @@ void AccelerateImpl<MatrixType_, UpLo_, Solver_, EnforceSquare_>::factorize(cons
 
   if (EnforceSquare_) eigen_assert(a.rows() == a.cols());
 
-  std::vector<long> columnStarts;
-
-  buildAccelSparseMatrix(a, columnStarts);
+  m_matrix = a;
+  buildAccelSparseMatrix();
+  m_numericFactorization.reset(nullptr);
 
   doFactorization();
 }
@@ -476,7 +600,17 @@ void AccelerateImpl<MatrixType_, UpLo_, Solver_, EnforceSquare_>::_solve_impl(co
   const int workspaceSize = m_numericFactorization->solveWorkspaceRequiredStatic + 
     nrhs*m_numericFactorization->solveWorkspaceRequiredPerRHS;
 
-  void* ws = internal::resizeForAccelerateAlignment(workspaceSize, &m_workspace);
+  // Use cached solve workspace to avoid repeated allocations
+  void* ws;
+  if (workspaceSize != m_cached_solve_workspace_size) {
+    ws = internal::resizeForAccelerateAlignment(workspaceSize, &m_solve_workspace);
+    m_cached_solve_workspace_size = workspaceSize;
+  } else {
+    // Reuse existing aligned workspace
+    constexpr int kAccelerateRequiredAlignment = 16;
+    ws = reinterpret_cast<void*>(m_solve_workspace.data() + 
+         (kAccelerateRequiredAlignment - reinterpret_cast<uintptr_t>(m_solve_workspace.data()) % kAccelerateRequiredAlignment) % kAccelerateRequiredAlignment);
+  }
   assert(ws != nullptr && "Accelerate workspace alignment failed");
 
   SparseSolve(*m_numericFactorization, bmat, xmat, ws);
@@ -486,14 +620,15 @@ void AccelerateImpl<MatrixType_, UpLo_, Solver_, EnforceSquare_>::_solve_impl(co
   if (m_doIterativeRefinement)
   {
     auto n = vDSP_Length(x.rows() * x.cols());
-    auto r_mem = std::vector<Scalar>(x.rows() * x.cols(), Scalar(0));
-
+    if (m_r_mem.size() < n) {
+        m_r_mem.resize(n);
+    }
     AccelDenseMatrix ref_mat{};
     ref_mat.attributes = SparseAttributes_t();
     ref_mat.columnCount = static_cast<int>(x.cols());
     ref_mat.rowCount = static_cast<int>(x.rows());
     ref_mat.columnStride = ref_mat.rowCount;
-    ref_mat.data = r_mem.data();
+    ref_mat.data = m_r_mem.data();
 
     for (int i = 0; i < m_iterativeRefinementIterations; ++i) {
         // Calculate residual and store in ref_mat
@@ -501,7 +636,7 @@ void AccelerateImpl<MatrixType_, UpLo_, Solver_, EnforceSquare_>::_solve_impl(co
             bmat.data, 1,
             ref_mat.data, 1, n
         );
-        SparseMultiplyAdd(m_matrix, xmat, ref_mat);
+        SparseMultiplyAdd(m_accel_matrix, xmat, ref_mat);
 
         // Solve for correction and store in ref_mat
         SparseSolve(*m_numericFactorization, ref_mat, ws);
@@ -517,7 +652,10 @@ void AccelerateImpl<MatrixType_, UpLo_, Solver_, EnforceSquare_>::_solve_impl(co
   }
 }
 
+void setNumThreads(int num_threads) {
+    accelerate_set_num_threads(num_threads);
+}
+
 }  // end namespace Eigen
 
 #endif  // EIGEN_ACCELERATESUPPORT_H
-

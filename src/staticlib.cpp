@@ -68,13 +68,6 @@ bool test_sparselib() {
 #include <iostream>
 #include <cstdlib>
 
-void accelerate_set_num_threads(int num_threads) {
-    // Respect user-defined number of threads for Accelerate and set if unset
-    const char* env_p = std::getenv("VECLIB_MAXIMUM_THREADS");
-    if (!env_p)
-        setenv("VECLIB_MAXIMUM_THREADS", std::to_string(num_threads).c_str(), 1);
-}
-
 bool test_sparselib() {
 
     using namespace Eigen;
@@ -85,7 +78,7 @@ bool test_sparselib() {
     int nu = 3;
     int cardstates = 2;
 
-    AccelerateLDLT<SparseMatrix<double, EIGEN_STORAGE_ORDER>, Upper> kktsol;
+    AccelerateLDLTTPP<SparseMatrix<double, EIGEN_STORAGE_ORDER>, Upper> kktsol;
     kktsol.setOrder(SparseOrderMetis);
     kktsol.setIterativeRefinement(true);
 
@@ -113,6 +106,9 @@ bool test_sparselib() {
                 std::cout << "Decomposition failed" << std::endl;
                 return false;
             }
+
+            std::cout << "Positive eigenvalues: " << kktsol.numPositiveEigenvalues() << std::endl;
+            std::cout << "Negative eigenvalues: " << kktsol.numNegativeEigenvalues() << std::endl;
 
             x = kktsol.solve(b);
 
